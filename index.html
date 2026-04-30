@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نموذج (3) - محاكي القدرات - أ/ عبدالعزيز الفيفي</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <style>
+        :root { --maroon: #800000; --gold: #d4af37; --bg: #fdfaf1; --white: #ffffff; --correct: #2e7d32; --wrong: #c62828; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); display: flex; justify-content: center; padding: 20px; margin: 0; user-select: none; }
+        .quiz-card { background: var(--white); width: 100%; max-width: 900px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-top: 10px solid var(--maroon); padding: 30px; position: relative; }
+        .header { text-align: center; border-bottom: 2px solid var(--gold); margin-bottom: 20px; padding-bottom: 10px; }
+        .input-group { margin: 15px auto; width: 85%; text-align: right; }
+        input, select { width: 100%; padding: 14px; border-radius: 8px; border: 1.5px solid #ccc; font-size: 1.1rem; outline: none; box-sizing: border-box; background: #fff; margin-bottom: 10px; display: block; }
+        .nav-bar { display: flex; justify-content: space-between; align-items: center; background: #f4f4f4; padding: 12px 20px; border-radius: 10px; margin-bottom: 20px; }
+        .q-text { font-size: 1.4rem; font-weight: bold; text-align: center; margin-bottom: 30px; line-height: 1.8; color: #222; }
+        .reading-text { background-color: #fffde7; border: 1px solid #fff59d; padding: 20px; border-radius: 10px; margin-bottom: 20px; font-size: 1.15rem; text-align: justify; line-height: 1.8; color: #333; }
+        .q-category { display: inline-block; background: var(--maroon); color: var(--gold); padding: 4px 12px; border-radius: 5px; font-size: 0.9rem; margin-bottom: 10px; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .opt { padding: 18px; border: 2px solid #ececec; border-radius: 12px; cursor: pointer; transition: 0.2s; text-align: center; font-size: 1.2rem; background: #fff; font-weight: 600; }
+        .opt:hover { border-color: var(--gold); background: #fffcf0; }
+        .correct { background: var(--correct) !important; color: white; }
+        .wrong { background: var(--wrong) !important; color: white; }
+        .btn { background: var(--maroon); color: var(--gold); padding: 14px 50px; border: none; border-radius: 10px; cursor: pointer; font-size: 1.2rem; font-weight: bold; width: 100%; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+        .hidden { display: none !important; }
+        #timer { color: var(--maroon); font-size: 1.6rem; font-weight: 800; border: 2px solid var(--gold); padding: 5px 15px; border-radius: 50px; }
+        .fb-box { margin-top: 20px; padding: 20px; background: #f0f4ff; border-right: 8px solid var(--gold); border-radius: 8px; display: none; }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+<div class="quiz-card">
+    <div class="header">
+        <h3 style="margin:0; color:var(--maroon);">أ / عبدالعزيز الفيفي ✨</h3>
+        <h2 style="margin:5px 0;">محاكي القدرات اللفظي - نموذج (3) المطوّر</h2>
+        <p style="margin:0; color:var(--gold); font-weight:bold;">ثانوية الأمير عبدالمجيد 😊</p>
+    </div>
+
+    <div id="blocked-page" class="hidden" style="text-align: center; padding: 50px;">
+        <h2 style="color: var(--wrong);">نظام الحماية 🛡️</h2>
+        <p style="font-size: 1.3rem;">عذراً، لقد اختبرت في هذا النموذج مسبقاً من هذا الجهاز.</p>
+    </div>
+
+    <div id="start-page" style="text-align: center;">
+        <div class="input-group"><input type="text" id="studentName" placeholder="الاسم الثلاثي الحقيقي"></div>
+        <div class="input-group">
+            <select id="stageSelect" onchange="updateClasses()">
+                <option value="">-- اختر المرحلة الدراسية --</option>
+                <option value="أول ثانوي">أول ثانوي</option>
+                <option value="ثاني ثانوي">ثاني ثانوي</option>
+                <option value="ثالث ثانوي">ثالث ثانوي</option>
+            </select>
+            <select id="studentClass" style="display: none;">
+                <option value="">-- اختر الفصل --</option>
+            </select>
+        </div>
+        <button id="start-btn" class="btn" onclick="validateAndStart()">بدء الاختبار 🚀</button>
+    </div>
+
+    <div id="quiz-page" class="hidden">
+        <div class="nav-bar">
+            <div id="q-counter" style="font-weight: bold;"></div>
+            <div id="timer">45</div>
+        </div>
+        <div id="category-tag" class="q-category"></div>
+        <div id="reading-content" class="reading-text hidden"></div>
+        <div id="question-text" class="q-text"></div>
+        <div id="options-area" class="options-grid"></div>
+        <div id="feedback-area" class="fb-box"></div>
+        <div style="text-align: center; margin-top: 25px;">
+            <button id="next-btn" class="btn hidden" style="width: 50%;" onclick="nextQuestion()">السؤال التالي ⮕</button>
+        </div>
+    </div>
+
+    <div id="result-page" class="hidden" style="text-align: center;">
+        <h2 style="color: var(--maroon);">النتيجة النهائية</h2>
+        <div style="font-size: 4rem; font-weight: bold; margin: 20px 0; color: var(--gold);" id="score-text"></div>
+        <p id="cloud-msg"></p>
+        <button class="btn" style="width: auto;" onclick="location.reload()">إغلاق</button>
+    </div>
+</div>
+
+<script>
+    const MODEL_ID = "model_03_v2026_final"; 
+    const DEVICE_KEY = btoa(navigator.userAgent + screen.width + screen.height + navigator.language);
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBkCO7FDQXd89YDf843J4_AtvEFvzzt-R0",
+        authDomain: "aztlg-494c3.firebaseapp.com",
+        projectId: "aztlg-494c3",
+        storageBucket: "aztlg-494c3.firebasestorage.app",
+        messagingSenderId: "597051893949",
+        appId: "1:597051893949:web:de5554ac900317a92b2fd4"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    window.onload = function() {
+        if (localStorage.getItem("completed_" + MODEL_ID)) { showBlocked(); }
+    };
+
+    function showBlocked() {
+        document.getElementById('start-page').classList.add('hidden');
+        document.getElementById('blocked-page').classList.remove('hidden');
+    }
+
+    function updateClasses() {
+        const stage = document.getElementById('stageSelect').value;
+        const classSelect = document.getElementById('studentClass');
+        classSelect.innerHTML = '<option value="">-- اختر الفصل --</option>';
+        if (stage) {
+            classSelect.style.display = 'block';
+            for (let i = 1; i <= 6; i++) {
+                const opt = document.createElement('option');
+                opt.value = `${stage} - ${i}`;
+                opt.innerText = `فصل ${i}`;
+                classSelect.appendChild(opt);
+            }
+        } else { classSelect.style.display = 'none'; }
+    }
+
+    async function validateAndStart() {
+        const name = document.getElementById('studentName').value.trim();
+        const sClass = document.getElementById('studentClass').value;
+        if (name.split(' ').length < 3) return alert("يرجى كتابة الاسم الثلاثي الحقيقي.");
+        if (!sClass) return alert("يرجى اختيار الفصل.");
+
+        const btn = document.getElementById('start-btn');
+        btn.disabled = true; btn.innerText = "جاري الفحص السحابي...";
+        try {
+            const checkDevice = await db.collection("student_results").where("model_id", "==", MODEL_ID).where("device_key", "==", DEVICE_KEY).get();
+            const checkName = await db.collection("student_results").where("model_id", "==", MODEL_ID).where("name", "==", name).get();
+            if (!checkDevice.empty || !checkName.empty) { showBlocked(); return; }
+            document.getElementById('start-page').classList.add('hidden');
+            document.getElementById('quiz-page').classList.remove('hidden
